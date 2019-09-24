@@ -74,9 +74,9 @@ object TrackDataPrivate {
             var current = '\u0000'
             var indent = 0
             var isInQuotationMarks = false
-            for (i in 0 until jsonStr.length) {
+            for (element in jsonStr) {
                 last = current
-                current = jsonStr[i]
+                current = element
                 when (current) {
                     '"' -> {
                         if (last != '\\') {
@@ -139,7 +139,7 @@ object TrackDataPrivate {
         if (activity == null) {
             return
         }
-        mIgnoredActivities!!.add(activity.canonicalName)
+        mIgnoredActivities.add(activity.canonicalName)
     }
 
     /**
@@ -152,8 +152,8 @@ object TrackDataPrivate {
             return
         }
         val canonicalName = activity.canonicalName
-        if (mIgnoredActivities!!.contains(canonicalName)) {
-            mIgnoredActivities!!.remove(canonicalName)
+        if (mIgnoredActivities.contains(canonicalName)) {
+            mIgnoredActivities.remove(canonicalName)
         }
     }
 
@@ -167,7 +167,8 @@ object TrackDataPrivate {
     fun getAndroidID(mContext: Context): String {
         var androidID = ""
         try {
-            androidID = Settings.Secure.getString(mContext.contentResolver, Settings.Secure.ANDROID_ID)
+            androidID =
+                Settings.Secure.getString(mContext.contentResolver, Settings.Secure.ANDROID_ID)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -181,8 +182,10 @@ object TrackDataPrivate {
             deviceInfo["lib"] = "Android"
             deviceInfo["lib_version"] = TrackDataManager.SDK_VERSION
             deviceInfo["os"] = "Android"
-            deviceInfo["os_version"] = if (Build.VERSION.RELEASE == null) "UNKNOWN" else Build.VERSION.RELEASE
-            deviceInfo["manufacturer"] = if (Build.MANUFACTURER == null) "UNKNOWN" else Build.MANUFACTURER
+            deviceInfo["os_version"] =
+                if (Build.VERSION.RELEASE == null) "UNKNOWN" else Build.VERSION.RELEASE
+            deviceInfo["manufacturer"] =
+                if (Build.MANUFACTURER == null) "UNKNOWN" else Build.MANUFACTURER
             if (TextUtils.isEmpty(Build.MODEL)) {
                 deviceInfo["model"] = "UNKNOWN"
             } else {
@@ -218,14 +221,20 @@ object TrackDataPrivate {
 
         mDatabaseHelper = TrackDatabaseHelper(application, application.packageName)
 
-        application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+        application.registerActivityLifecycleCallbacks(object :
+            Application.ActivityLifecycleCallbacks {
             private var onGlobalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
 
-            override fun onActivityCreated(activity: Activity, bundle: Bundle) {
+            override fun onActivityCreated(activity: Activity, bundle: Bundle?) {
                 // 添加ViewTreeObserver.OnGlobalLayoutListener
                 val rootView = getRootViewFromActivity(activity, true)
                 onGlobalLayoutListener =
-                    ViewTreeObserver.OnGlobalLayoutListener { delegateViewsOnClickListener(activity, rootView) }
+                    ViewTreeObserver.OnGlobalLayoutListener {
+                        delegateViewsOnClickListener(
+                            activity,
+                            rootView
+                        )
+                    }
             }
 
             override fun onActivityStarted(activity: Activity) {
@@ -246,9 +255,10 @@ object TrackDataPrivate {
 
             override fun onActivityResumed(activity: Activity) {
                 trackAppViewScreen(activity)
-                // 移除ViewTreeObserver.OnGlobalLayoutListener
                 val rootView = getRootViewFromActivity(activity, true)
-                rootView.viewTreeObserver.addOnGlobalLayoutListener(onGlobalLayoutListener)
+                onGlobalLayoutListener?.let {
+                    rootView.viewTreeObserver.addOnGlobalLayoutListener(it)
+                }
             }
 
             override fun onActivityPaused(activity: Activity) {
@@ -259,9 +269,13 @@ object TrackDataPrivate {
 
             @SuppressLint("ObsoleteSdkInt")
             override fun onActivityStopped(activity: Activity) {
+                // 移除ViewTreeObserver.OnGlobalLayoutListener
                 if (Build.VERSION.SDK_INT >= 16) {
                     val rootView = getRootViewFromActivity(activity, true)
-                    rootView.viewTreeObserver.removeOnGlobalLayoutListener(onGlobalLayoutListener)
+                    onGlobalLayoutListener?.let {
+                        rootView.viewTreeObserver.removeOnGlobalLayoutListener(it)
+                    }
+
                 }
             }
 
@@ -420,13 +434,16 @@ object TrackDataPrivate {
      */
     fun registerActivityStateObserver(application: Application) {
         val appStartUri = mDatabaseHelper.appStartUri
-        application.contentResolver.registerContentObserver(appStartUri, false, object : ContentObserver(Handler()) {
-            override fun onChange(selfChange: Boolean, uri: Uri) {
-                if (appStartUri == uri) {
-                    mCountDownTimer.cancel()
+        application.contentResolver.registerContentObserver(
+            appStartUri,
+            false,
+            object : ContentObserver(Handler()) {
+                override fun onChange(selfChange: Boolean, uri: Uri) {
+                    if (appStartUri == uri) {
+                        mCountDownTimer.cancel()
+                    }
                 }
-            }
-        })
+            })
     }
 
     private fun createCountDownTimer(): CountDownTimer {
@@ -455,7 +472,8 @@ object TrackDataPrivate {
                 try {
                     val viewClazz = Class.forName("android.widget.ExpandableListView")
                     //Child
-                    val mOnChildClickListenerField = viewClazz.getDeclaredField("mOnChildClickListener")
+                    val mOnChildClickListenerField =
+                        viewClazz.getDeclaredField("mOnChildClickListener")
                     if (!mOnChildClickListenerField.isAccessible) {
                         mOnChildClickListenerField.isAccessible = true
                     }
@@ -468,7 +486,8 @@ object TrackDataPrivate {
                     }
 
                     //Group
-                    val mOnGroupClickListenerField = viewClazz.getDeclaredField("mOnGroupClickListener")
+                    val mOnGroupClickListenerField =
+                        viewClazz.getDeclaredField("mOnGroupClickListener")
                     if (!mOnGroupClickListenerField.isAccessible) {
                         mOnGroupClickListenerField.isAccessible = true
                     }
@@ -487,7 +506,8 @@ object TrackDataPrivate {
                 val onItemClickListener = view.onItemClickListener
                 onItemClickListener?.run {
                     if (onItemClickListener !is WrapperAdapterViewOnItemClick) {
-                        view.onItemClickListener = WrapperAdapterViewOnItemClick(onItemClickListener)
+                        view.onItemClickListener =
+                            WrapperAdapterViewOnItemClick(onItemClickListener)
                     }
                 }
             }
@@ -502,27 +522,27 @@ object TrackDataPrivate {
             } else if (view is CompoundButton) {
                 val onCheckedChangeListener = getOnCheckedChangeListener(view)
                 if (onCheckedChangeListener != null && onCheckedChangeListener !is WrapperOnCheckedChangeListener) {
-                    (view as CompoundButton).setOnCheckedChangeListener(
+                    view.setOnCheckedChangeListener(
                         WrapperOnCheckedChangeListener(onCheckedChangeListener)
                     )
                 }
             } else if (view is RadioGroup) {
                 val radioOnCheckedChangeListener = getRadioGroupOnCheckedChangeListener(view)
                 if (radioOnCheckedChangeListener != null && radioOnCheckedChangeListener !is WrapperRadioGroupOnCheckedChangeListener) {
-                    (view as RadioGroup).setOnCheckedChangeListener(
+                    view.setOnCheckedChangeListener(
                         WrapperRadioGroupOnCheckedChangeListener(radioOnCheckedChangeListener)
                     )
                 }
             } else if (view is RatingBar) {
-                val onRatingBarChangeListener = (view as RatingBar).onRatingBarChangeListener
+                val onRatingBarChangeListener = view.onRatingBarChangeListener
                 if (onRatingBarChangeListener != null && onRatingBarChangeListener !is WrapperOnRatingBarChangeListener) {
-                    (view as RatingBar).onRatingBarChangeListener =
+                    view.onRatingBarChangeListener =
                         WrapperOnRatingBarChangeListener(onRatingBarChangeListener)
                 }
             } else if (view is SeekBar) {
                 val onSeekBarChangeListener = getOnSeekBarChangeListener(view)
                 if (onSeekBarChangeListener != null && onSeekBarChangeListener !is WrapperOnSeekBarChangeListener) {
-                    (view as SeekBar).setOnSeekBarChangeListener(
+                    view.setOnSeekBarChangeListener(
                         WrapperOnSeekBarChangeListener(onSeekBarChangeListener)
                     )
                 }
@@ -531,11 +551,10 @@ object TrackDataPrivate {
 
         //如果 view 是 ViewGroup，需要递归遍历子 View 并 hook
         if (view is ViewGroup) {
-            val viewGroup = view as ViewGroup
-            val childCount = viewGroup.childCount
+            val childCount = view.childCount
             if (childCount > 0) {
                 for (i in 0 until childCount) {
-                    val childView = viewGroup.getChildAt(i)
+                    val childView = view.getChildAt(i)
                     //递归
                     delegateViewsOnClickListener(context, childView)
                 }
@@ -602,12 +621,12 @@ object TrackDataPrivate {
     private fun getElementContent(view: View?): String? {
         var content: String? = null
         view?.run {
-            when {
-                this is Button -> content = text.toString()
-                this is ActionMenuItemView -> content = text.toString()
-                this is TextView -> content = text.toString()
-                this is ImageView -> content = contentDescription.toString()
-                this is RadioGroup -> try {
+            when (this) {
+                is Button -> content = text.toString()
+                is ActionMenuItemView -> content = text.toString()
+                is TextView -> content = text.toString()
+                is ImageView -> content = contentDescription.toString()
+                is RadioGroup -> try {
                     val radioGroup = view as RadioGroup?
                     val activity = getActivityFromView(view)
                     if (activity != null) {
@@ -620,9 +639,9 @@ object TrackDataPrivate {
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
-                this is RatingBar -> content = rating.toString()
-                this is SeekBar -> content = progress.toString()
-                this is ViewGroup -> content = traverseViewContent(StringBuilder(), this)
+                is RatingBar -> content = rating.toString()
+                is SeekBar -> content = progress.toString()
+                is ViewGroup -> content = traverseViewContent(StringBuilder(), this)
             }
         }
 
@@ -692,7 +711,12 @@ object TrackDataPrivate {
         return activity
     }
 
-    fun trackAdapterView(adapterView: AdapterView<*>, view: View, groupPosition: Int, childPosition: Int) {
+    fun trackAdapterView(
+        adapterView: AdapterView<*>,
+        view: View,
+        groupPosition: Int,
+        childPosition: Int
+    ) {
         try {
             JSONObject().run {
                 put("element_type", adapterView.javaClass.canonicalName)
@@ -753,7 +777,7 @@ object TrackDataPrivate {
      * @param view View
      * @return View.OnClickListener
      */
-    @SuppressLint("PrivateApi")
+    @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
     @TargetApi(15)
     private fun getOnClickListener(view: View): View.OnClickListener? {
         val hasOnClick = view.hasOnClickListeners()
@@ -796,7 +820,8 @@ object TrackDataPrivate {
     private fun getOnCheckedChangeListener(view: View): CompoundButton.OnCheckedChangeListener? {
         try {
             val viewClazz = Class.forName("android.widget.CompoundButton")
-            val mOnCheckedChangeListenerField = viewClazz.getDeclaredField("mOnCheckedChangeListener")
+            val mOnCheckedChangeListenerField =
+                viewClazz.getDeclaredField("mOnCheckedChangeListener")
             if (!mOnCheckedChangeListenerField.isAccessible) {
                 mOnCheckedChangeListenerField.isAccessible = true
             }
@@ -815,7 +840,8 @@ object TrackDataPrivate {
     private fun getOnSeekBarChangeListener(view: View): SeekBar.OnSeekBarChangeListener? {
         try {
             val viewClazz = Class.forName("android.widget.SeekBar")
-            val mOnCheckedChangeListenerField = viewClazz.getDeclaredField("mOnSeekBarChangeListener")
+            val mOnCheckedChangeListenerField =
+                viewClazz.getDeclaredField("mOnSeekBarChangeListener")
             if (!mOnCheckedChangeListenerField.isAccessible) {
                 mOnCheckedChangeListenerField.isAccessible = true
             }
@@ -834,7 +860,8 @@ object TrackDataPrivate {
     private fun getRadioGroupOnCheckedChangeListener(view: View): RadioGroup.OnCheckedChangeListener? {
         try {
             val viewClazz = Class.forName("android.widget.RadioGroup")
-            val mOnCheckedChangeListenerField = viewClazz.getDeclaredField("mOnCheckedChangeListener")
+            val mOnCheckedChangeListenerField =
+                viewClazz.getDeclaredField("mOnCheckedChangeListener")
             if (!mOnCheckedChangeListenerField.isAccessible) {
                 mOnCheckedChangeListenerField.isAccessible = true
             }

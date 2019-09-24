@@ -64,17 +64,22 @@ class TrackDataManager private constructor(application: Application) {
         }
     }
 
+    /**
+     * 忽略要埋点的Activity
+     */
     fun ignoreAutoTrackActivity(activityClass: Class<*>) {
         TrackDataPrivate.ignoreAutoTrackActivity(activityClass)
     }
 
+    /**
+     * 恢复埋点的Activity
+     */
     fun removeIgnoredActivity(activityClass: Class<*>) {
         TrackDataPrivate.removeIgnoreActivity(activityClass)
     }
 
     companion object {
         internal const val SDK_VERSION = "1.0.0"
-        private val mLock = Any()
 
         lateinit var instance: TrackDataManager
 
