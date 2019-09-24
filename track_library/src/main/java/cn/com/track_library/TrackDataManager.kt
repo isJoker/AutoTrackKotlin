@@ -38,7 +38,7 @@ class TrackDataManager private constructor(application: Application) {
                 TrackDataPrivate.mergeJSONObject(properties, sendProperties)
                 put("properties", sendProperties)
 
-                // 打印点击事件信息
+                // 打印事件信息
                 Log.i(TAG, TrackDataPrivate.formatJson(toString()))
             }
 
